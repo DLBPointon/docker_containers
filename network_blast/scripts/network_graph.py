@@ -1,4 +1,4 @@
-#!/usr/local/bin/python
+#!/usr/local/bin python
 
 import argparse
 import networkx as nx

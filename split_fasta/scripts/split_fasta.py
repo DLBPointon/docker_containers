@@ -1,5 +1,5 @@
-# Take meta.id and file. All files are assumed CDNA.
-# Script is adapted from my own used for data cleaning at Sanger
+#!/usr/local/bin/python
+
 import argparse
 import sys
 import os
@@ -14,10 +14,8 @@ input number of files.
 
 e.g. 100 entries in a files + User input of 25 = 4 files
 --------------------------------------------------------------
-Usage:
-
-    split_fasta.py \\
-        {IN_FASTA} {ID} {ENTRY_PER}
+Usage: 
+        split_fasta.py {IN_FASTA} {ID} {ENTRY_PER}
 --------------------------------------------------------------
 """
 
@@ -93,7 +91,7 @@ def main():
     options = get_command_args(args=None)
 
     entry_function( options.ENTRY_PER,
-                    options.IN_FILE,
+                    options.IN_FASTA,
                     options.ID )
 
 

@@ -1,101 +1,102 @@
-#!/usr/local/bin/python
+#!/usr/bin/env python3
 
-import argparse
-import sys
-import os
+"""
+Filter BLAST
+------------
+Author: dp24 / DLBPointon
+Contact: dp24@sanger.ac.uk / damonlbp@hotmail.co.uk
 
-DOCSTRING = """
---------------------------------------------------------------
-                    Split_fasta (python 3)
-                      By dp24 / DLBPointon
---------------------------------------------------------------
-A Python script that splits fasta files into total_entries/User
-input number of files. 
+A small script to take an input blast file
+and filter it's contents to given percentage.
 
-e.g. 100 entries in a files + User input of 25 = 4 files
---------------------------------------------------------------
+qstart & qend columns are then used to calculate strand direction.
+pident is rounded up the next whole number.
+sseqid is split to give transcript name and ensemble name columns.
+
+input_file by default should be -outfrmt 6
+
 Usage:
+python3 filter_blast.py organism_name, data_type, file_location, percentage_to_filter
 
-    split_fasta.py \\
-        {IN_FASTA} {ID} {ENTRY_PER}
---------------------------------------------------------------
 """
 
-def get_command_args(args=None):
-    parser = argparse.ArgumentParser(prog='network_graph.py (Python 3)',
-                                description=DOCSTRING,
-                                formatter_class=argparse.RawDescriptionHelpFormatter)
+import os
+import sys
+import pandas as pd
+import numpy as np
 
-    parser.add_argument('IN_FASTA',
-                        action = 'store',
-                        help = 'The input fasta for splitting',
-                        type = str)
+pd.options.mode.chained_assignment = None
+BLAST_HEADER = ['qseqid', 'sseqid','pident', 'length', 'mismatch', 'gapopen', 'qstart', 'qend','sstart','send','evalue','bitscore']
 
-    parser.add_argument('ID',
-                        action = 'store',
-                        help = 'ID of in and out file',
-                        type = str)
+NEW_FORMAT = ['sseqid', 'sstart', 'send', 'qseqid', 'pident_2', 'strand']
 
-    parser.add_argument('ENTRY_PER',
-                        action = 'store',
-                        help = "The number of fasta entries per output fasta",
-                        type = int)
+def arg_check(arg_list):
+    org = str(arg_list[1])
+    dtype = str(arg_list[2])
+    filt_percent = float(arg_list[4])
 
-    parser.add_argument('-v', '--version',
-                        action='version',
-                        version='0.001')
+    if os.path.exists(arg_list[3]):
+        input_file = arg_list[3]
+    else:
+        print("Can't find file")
+        sys.exit()
 
-    options = parser.parse_args(args)
-    return options
+    return org, dtype, input_file, filt_percent
 
-def read_fasta(filetoparse):
-    counter = 0
-    name, seq = None, []
+def load_blast(input_file: str, blst_head: list):
+    return pd.read_csv(input_file, sep='\t', names=blst_head)
 
-    for line in filetoparse:
-        line = line.rstrip()
+def filter_blast(df, filt_percent: float):
+    return df[(df['pident'] > filt_percent)]
 
-        if line.startswith(">"):
-            if name:
-                yield name, ''.join(seq)
-            name, seq = line, []
-        else:
-            seq.append(line)
+def rounded_df(df):
+    return df['pident'].round(decimals = 0).astype(int)
 
-    if name:
-        yield name, ''.join(seq)
-        counter += 1
+def plus_neg(df):
+    return np.where(df['sstart'].astype(int) < df['send'].astype(int), '+', '-')
 
-def entry_function(entry_per: int, file: str, id: str):
-    count = 0
-    entry = []
-    file_count = 0
-    if os.path.exists(file):
-        with open(file, 'r') as for_parsing:
-            for name, seq in read_fasta(for_parsing):
-                count += 1
-                name_seq = name, seq
-                entry.append(name_seq)
-                if int(count) == int(entry_per):
-                    file_count += 1
-                    with open(f'{id}_{file_count}.MOD.fa', 'w') as end_file:
-                        [end_file.write(f'{header}\n{seq}\n') for header, seq in entry]
-                        count = 0
-                        entry = []
-
-                file_count += 1 
-
-            with open(f'{id}_{count}.MOD.fa', 'w') as end_file:
-                [end_file.write(f'{header}\n{seq}\n') for header, seq in entry]
-                entry = [] 
+def save_file(org: str, dtype: str, df, go_on: bool):
+    if go_on:
+        df.to_csv(f"{org}-{dtype}-filtered90.tsv", sep='\t', header=False, index=False)
+    else:
+        df.to_csv(f"{org}-{dtype}-EMPTY.tsv", sep='\t', header=False, index=False)
 
 def main():
-    options = get_command_args(args=None)
+    arg_list = sys.argv
+    if '-v' in arg_list:
+        return 'v1.0.0'
+    print(arg_list)
+    go_on = True
 
-    entry_function( options.ENTRY_PER,
-                    options.IN_FILE,
-                    options.ID )
+    org, dtype, input_file, filt_percent = arg_check(arg_list)
 
+    if os.path.getsize(arg_list[3]) == 0:
+        print("FILE SIZE: 0 - KILLING JOB")
+        go_on = False
+        final_blast = pd.DataFrame(columns=['EMPTY'])
+    else:
+        print(f"FILE SIZE: {os.path.getsize(arg_list[3])} - RUNNING JOB")
 
-if __name__ == "__main__":
+        blast_df = load_blast(input_file, BLAST_HEADER)
+        final_blast = filter_blast(blast_df, filt_percent)
+
+        # Stitch together the columns generated by functions
+        final_blast['pident_2'] = rounded_df(final_blast)
+        final_blast['strand'] = plus_neg(final_blast)
+
+        final_blast = final_blast.reindex(columns=NEW_FORMAT)
+
+        # Identifies where strand = '-' swap values in start and end sequence column.
+        negative_strand = final_blast['strand'] == '-'
+        final_blast.loc[negative_strand, ['sstart', 'send']] = (
+            final_blast.loc[negative_strand, ['send', 'sstart']].values
+            )
+        final_blast[['sstart', 'send']] = final_blast[['sstart', 'send']].astype(int)
+
+        final_blast = final_blast.sort_values(by=['sseqid','sstart'], ascending=True)
+
+    print('Saving File')
+    save_file(org, dtype, final_blast, go_on)
+
+if __name__ == '__main__':
     main()
