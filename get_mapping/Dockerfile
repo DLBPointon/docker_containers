@@ -1,5 +1,5 @@
 FROM python:3.9
-ARG TAG = 0.001
+ARG TAG=0.001
 
 USER root
 ################## MAINTAINER ######################

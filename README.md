@@ -4,7 +4,7 @@ This repo and in turn the data contained are those required for personal project
 
 This repo is not automates due to the complicated nature of building and pushing multiple images in one repo.
 
-Due to how I have set this up, all containers will be here: `https://hub.docker.com/repository/docker/dlbpointon/my_containers`
+Due to how I have set this up, all containers will be here: `https://hub.docker.com/repository/docker/dlbpointon/`
 
 ## Projects
 

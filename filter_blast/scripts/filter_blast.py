@@ -1,5 +1,5 @@
-# Take meta.id and file. All files are assumed CDNA.
-# Script is adapted from my own used for data cleaning at Sanger
+#!/usr/local/bin/python
+
 import argparse
 import sys
 import os
