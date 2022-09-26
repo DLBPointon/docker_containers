@@ -70,7 +70,7 @@ def get_command_args(args=None):
 
     parser.add_argument('-v', '--version',
                         action='version',
-                        version='0.002')
+                        version='0.003')
 
     options = parser.parse_args(args)
     return options
@@ -167,28 +167,30 @@ def main():
 
     dtype = options.DATA_TYPE
     if options.filter_max >= 1 and options.filter_max > options.filter_min:
-        save_name = f'{get_date()}-filt{options.filter_max}-{options.filter_min}-{dtype.upper()}.png'
+        save_name = f'{get_date()}-filt{options.filter_max}-{0}|{options.filter_min}-{dtype.upper()}.png'
         print(f'''
         ---- Checking input options ----
-        Mapping File    : {options.ID_MAPPING}
-        BLAST output    : {options.BLAST_OUT}
-        Data Type       : {dtype.upper()}
+        Mapping File        : {options.ID_MAPPING}
+        BLAST output        : {options.BLAST_OUT}
+        Data Type           : {dtype.upper()}
         
         ----    Filter Options      ----
-        Max filter      : {options.filter_max}
-        Min filter      : {options.filter_min}
+        Default Max Filt    : 1_000_000
+        Max filter          : {options.filter_max}
+        Default Min Filt    : 0
+        Min filter          : {options.filter_min}
         
         ----    Output              ----
         Generating graph:\n{save_name}
         ''')
-
-        filtered_df = filter_pandas(merged_df, options.filter_max, options.filter_min)
-        graph_obj = generate_graph_obj(filtered_df)
-        updated_go = add_more_edges(filtered_df['organism'], graph_obj)
-        label_dict = generate_labels(filtered_df, updated_go)
-        colour_map = generate_colour_map(filtered_df, updated_go)
-        new_positions = generate_positions(filtered_df, nx.spring_layout(graph_obj))
-        generate_graph(updated_go, new_positions, colour_map, label_dict, save_name)
+        for i in [0, options.filter_min]:
+            filtered_df = filter_pandas(merged_df, options.filter_max, i)
+            graph_obj = generate_graph_obj(filtered_df)
+            updated_go = add_more_edges(filtered_df['organism'], graph_obj)
+            label_dict = generate_labels(filtered_df, updated_go)
+            colour_map = generate_colour_map(filtered_df, updated_go)
+            new_positions = generate_positions(filtered_df, nx.spring_layout(graph_obj))
+            generate_graph(updated_go, new_positions, colour_map, label_dict, save_name)
     else:
         sys.exit()
 
